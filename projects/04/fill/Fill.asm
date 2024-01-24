@@ -34,13 +34,35 @@ M=0
 M=0
 
 //If RAM[24576] == 0 --> NO Keys are being pressed//
-(LOOP)
+(CHECK_KEYS)
 @24576 //This is reffering to a memory slot
 D=M  //Load value at RAM[24576] into a Data
-@NO_KEYS_PRESS
+@SET_UP2
 D;JEQ	//Jump to  NO_KEYS_PRESS if D (value at RAM[24576]) is equal to zero
 
+
+//flag - will check it runs in sequence if flag = 1 --> it's already running
+
+
+
 //Otherwise keys are being pressed//
+(SET_UP1)
+@i
+M=0
+@j
+D=M
+@TURN_BLACK
+D;JGT
+@flag
+M=1
+@16384
+D=A
+@R2
+M=D
+@j
+M=0
+
+(TURN_BLACK)
 @R2
 D=M
 @j
@@ -51,10 +73,26 @@ M=-1
 @j
 M=M+1
 //goto Loop
-@LOOP
+@CHECK_KEYS
 0;JMP
 
-(NO_KEYS_PRESS)
+(SET_UP2)
+//reset up j-indexing//
+@j
+M=0
+//check i-indexing//
+@i
+D=M
+@TURN_WHITE
+D;JGT
+@16384
+D=A
+@R0
+M=D
+@i
+M=0
+
+(TURN_WHITE)
 @R0
 D=M	//transfer data stored in the memory to the Data - register (to be used)
 @i	
@@ -65,6 +103,6 @@ M=0	//memory will be turn to -1
 @i
 M=M+1
 //goto Loop
-@LOOP
+@CHECK_KEYS
 0;JMP
 
