@@ -19,8 +19,18 @@ D=A	//we now say the Adress/Memory slot called 16384 is now being considered as 
 @R0	//This is reffering to a memory slot
 M=D	//We now say the memory of R0 will contain data=16384
 
+//R1=16384//
+@16384
+D=A
+@R2
+M=D
+
 //i=0//
 @i
+M=0
+
+//j=0//
+@j
 M=0
 
 //If RAM[24576] == 0 --> NO Keys are being pressed//
@@ -30,19 +40,16 @@ D=M  //Load value at RAM[24576] into a Data
 @NO_KEYS_PRESS
 D;JEQ	//Jump to  NO_KEYS_PRESS if D (value at RAM[24576]) is equal to zero
 
-
-//The loop is time dependant --> When the keys are pressed it'll take time to start 
-//blackening the screen
-//No really a bug but it can causes a big time delay.
-@R0
+//Otherwise keys are being pressed//
+@R2
 D=M
-@i
-A=D-M
+@j
+A=D+M
 M=-1
 
-//i=i-1//
-@i
-M=M-1
+//j=j+1//
+@j
+M=M+1
 //goto Loop
 @LOOP
 0;JMP
