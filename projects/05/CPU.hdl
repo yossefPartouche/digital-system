@@ -32,5 +32,20 @@ CHIP CPU {
         pc[15];          // Address of next instruction
 
     PARTS:
-    //// Replace this comment with your code.
+    Mux16(a=instruction ,b=outALU ,sel= ,out=inAreg);
+
+    //A-register (current thought)
+    RAM16K(in=inAreg ,load= ,address=addressM ,out=outAreg );
+
+    //D-register (current thought)
+    RAM16K(in=outALUinD ,load= ,address= ,out=YinALU );
+
+
+    //Mux for x input value
+    Mux16(a=outAreg ,b=inM ,sel= ,out=XinALU);
+
+    ALU(x=XinALU ,y=YinALu ,zx= ,nx= ,zy= ,ny= ,f= ,no= ,out=outM, out=outALU , out=outALUinD zr= ,ng= );
+
+    PC(in=outAreg ,load= ,inc= ,reset=reset ,out=pc );
+
 }
