@@ -32,19 +32,21 @@ CHIP CPU {
         pc[15];          // Address of next instruction
 
     PARTS:
-    Mux16(a=instruction ,b=outALU ,sel= ,out=inAreg);
+    //If instruction is an A- Instruction go to A-register
+    Mux16(a=instruction ,b=outALU ,sel=instruction[15] ,out=AinstCinst);//AinstCinst== inAreg
 
-    //A-register (current thought)
-    RAM16K(in=inAreg ,load= ,address=addressM ,out=outAreg );
+    //A-register
+    //this should be set if the MSB is 0 or 1
+    //Not too sure if we should be using the input at the inAreg or at the instruction input.
+    RAM16K(in=AinstCinst ,load=instruction[15] ,address=addressM ,out=outAreg);
 
     //D-register (current thought)
-    RAM16K(in=outALUinD ,load= ,address= ,out=YinALU );
-
+    DRegister(in=outALUinD ,load= ,out=YinALU );
 
     //Mux for x input value
-    Mux16(a=outAreg ,b=inM ,sel= ,out=XinALU);
+    Mux16(a=outAreg ,b=inM ,sel=instruction[15] ,out=XinALU);
 
-    ALU(x=XinALU ,y=YinALu ,zx= ,nx= ,zy= ,ny= ,f= ,no= ,out=outM, out=outALU , out=outALUinD zr= ,ng= );
+    ALU(x=XinALU ,y=YinALu ,zx=XinALU[7] ,nx=XinALU[8] ,zy=YinALU[7] ,ny=YinALU[8] ,f= ,no= ,out=outM, out=outALU , out=outALUinD zr= ,ng= );
 
     PC(in=outAreg ,load= ,inc= ,reset=reset ,out=pc );
 
