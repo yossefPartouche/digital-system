@@ -1,4 +1,4 @@
-// This file is part of www.nand2tetris.org
+//This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
 // by Nisan and Schocken, MIT Press.
 // File name: projects/05/CPU.hdl
@@ -32,20 +32,38 @@ CHIP CPU {
         pc[15];          // Address of next instruction
 
     PARTS:
-    //If instruction is an A- Instruction go to A-register
-    Mux16(a=instruction ,b=outALU ,sel=instruction[15] ,out=AinstCinst);//AinstCinst== inAreg
+	//makes life easier instead of refferecing bits we refference logic
+	Mux16(a=false, b=instruction ,sel=instruction[15] ,
+		out[0]=cJGT,
+		out[1]=cJEQ,
+		out[2]=cJLT,
+		out[3]=cDestM,
+		out[4]=cDestD,
+		out[5]=cDestA,
+		out[6]=cno,
+		out[7]=cf,
+		out[8]=cny,
+		out[9]=czy,
+		out[10]=cnx,
+		out[11]=czx,
+		out[12]=cAorM,
+		out[15]=cType
+ );	
 
-    //A-register
-    ARegister(in=AinstCinst ,load=instruction[5] ,out=writeM, out=outAreginMux )
+	Not(in=cType ,out=NotcType );
+	
+	Or(a=NotcType ,b=cDestA ,out=loadA);
+	
+	Mux16(a=aRegOut ,b=inM ,sel=cAorM ,out=yIn );
+	
+	ARegister(in=aIn ,load=loadA ,out=aRegOut);
 
-    //D-register (current thought)
-    DRegister(in=outALUinD ,load=instruction[4] ,out=YinALU );
-
-    //Mux for x input value
-    Mux16(a=outAreginMux ,b=inM ,sel=instruction[12] ,out=XinALU);
-
-    ALU(x=XinALU ,y=YinALu ,zx=instruction[6] ,nx=instruction[7] ,zy=instruction[8] ,ny=instruction[9] ,f=instruction[10] ,no=instruction[11] ,out=outM, out=outALU , out=outALUinD zr= ,ng= );
-
-    PC(in=outAreg ,load=instruction[0..2] ,inc=outAreg ,reset=reset ,out=pc );
-
+	DRegister(in=aluOut ,load=cDestD ,out=dRegOut);
+	
+	ALU(x=dRegOut ,y=yIn ,zx=cZX ,nx=cNX ,zy=cZY ,ny=cNY ,f=cF ,no=cNO ,out=aluOut, out=outM ,zr=zeroP ,ng=negP );
+	
+	//inc=1 --> go to next but may be irrelivant if jump is on
+	//we output the first 15 bits as the 16 is only relevant for the instruction D or A
+	PC(in=aRegOut ,load=jump,inc=1 ,reset=reset ,out=out[0..14]);
+	
 }
