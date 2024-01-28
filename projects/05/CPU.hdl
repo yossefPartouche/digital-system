@@ -66,4 +66,20 @@ CHIP CPU {
 	//we output the first 15 bits as the 16 is only relevant for the instruction D or A
 	PC(in=aRegOut ,load=jump,inc=1 ,reset=reset ,out=out[0..14]);
 	
+	//in the assembly code we want to check both conditions:
+	//1: someone requested if cJLT,cJGT,cJEQ
+	//2: The extracted value will be true to the request that is negP,zeroP, NotNegP.
+	//if one of these conditions are true then it will return 1 --> will be the load value in PC
+	//direct the PC where to go next
+
+	And(a=cJLT ,b=negP ,out=o1);
+	And(a=CJEQ ,b=zeroP ,out=o2);
+	Not(in=zeroP ,out=NotZeroP);
+	Not(in=negP ,out=NotNegP);
+	And(a=NotZeroP ,b=NotNegP ,out=neither);
+	And(a=CJGT ,b=neither ,out=o3);
+	
+	Or(a=o1 ,b=o2 ,out=o1o2);
+	Or(a=o1o2 ,b=o3 ,out=jump);	
+	
 }
