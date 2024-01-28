@@ -17,5 +17,9 @@ CHIP Computer {
     IN reset;
 
     PARTS:
-    //// Replace this comment with your code.
+	//connect the pins and don't worry about finding a new name for every internal pin
+
+	ROM32K(address=nextIns ,out=romOut );
+	CPU(inM=reLoad ,instruction=romOut ,reset=reset ,outM=storeM ,writeM=writeM ,addressM=addOut ,pc=nextIns );
+	Memory(in=storeM ,load=writeM ,address=addOut ,out=reLoad );
 }
