@@ -4,18 +4,16 @@ class address_dictionary:
     def __init__(self):
         self.data = {}
         self.counter = 15
-
+        self.special_cases = {
+            **{f"@R{i}": "@" + str(i) for i in range(16)},
+            "SCREEN": "@16384",
+            "KBD": "@24576" 
+        }
     def __getitem__(self, key):
-        if key.startswith("@R"):
-            index = int(key[2:])
-            if 0 <= index <= 15:
-                return "@" + str(index)
-        elif key == "SCREEN":
-            self.data[key] = "@" + "16384"
-            return "@" + "16384"
-        elif key == "KBD":
-            self.data[key] = "@" + "24576"
-            return "@" + "24576"
+        if key in self.special_cases:
+            if key not in self.data:
+                self.data[key] = self.special_cases[key]
+            return self.data[key]
         elif key.startswith("@"):
             if key not in self.data:
                 self.counter += 1
