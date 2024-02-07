@@ -10,6 +10,12 @@ class address_dictionary:
             index = int(key[2:])
             if 0 <= index <= 15:
                 return "@" + str(index)
+        elif key == "SCREEN":
+            self.data[key] = "@" + "16384"
+            return "@" + "16384"
+        elif key == "KBD":
+            self.data[key] = "@" + "24576"
+            return "@" + "24576"
         elif key.startswith("@"):
             if key not in self.data:
                 self.counter += 1
