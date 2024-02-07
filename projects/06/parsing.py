@@ -24,6 +24,9 @@ class address_dictionary:
         return None
 
 class Parsing:
+    #conversion for the address
+    def to_16_bit(number):
+        return format(number, '016b')
 
     if len(sys.argv) < 2:
         print("Usage: python script_name.py filename")
@@ -42,8 +45,9 @@ class Parsing:
         for line in temp_output_file:
             if line.startswith("@"):
                 key = line.strip()
-                value = address.__getitem__(key)            
-                output_file.write(value + "\n")
+                value = address.__getitem__(key)
+                #trial for direct conversions           
+                output_file.write(str(to_16_bit(int(value[1::])))  + "\n")
             else:
                 output_file.write(line)
                                   
