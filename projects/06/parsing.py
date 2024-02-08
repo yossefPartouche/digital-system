@@ -40,12 +40,6 @@ class Parsing:
         for line in temp_output_file:
             if line.startswith("@"):
                 key = line.strip()
-                #test case condition (to be deleted)
-                if key.startswith("@S"):
-                    with open ("scrn_output.txt", "w+") as scrn_output:
-                        value_scrn = address.__getitem__(key)
-                        scrn_output.write(to_16_bit(int(value_scrn)) + "\n")
-                #continuation of standard code flow
                 value = address.__getitem__(key)
                 #trial for direct conversions          
                 output_file.write(str(to_16_bit(int(value)))  + "\n")
