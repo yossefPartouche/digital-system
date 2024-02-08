@@ -7,8 +7,8 @@ class address_dictionary:
         self.counter = 15
         self.special_cases = {
             **{f"@R{i}": str(i) for i in range(16)},
-            "SCREEN": "16384",
-            "KBD": "24576" 
+            "@SCREEN": "16384",
+            "@KBD": "24576" 
         }
     def __getitem__(self, key):
         if key in self.special_cases:
@@ -22,7 +22,7 @@ class Parsing:
     #conversion for the address
     def to_16_bit(number):
         return format(number, '016b')
-"""
+
     if len(sys.argv) < 2:
         print("Usage: python script_name.py filename")
         sys.exit(1)
@@ -40,17 +40,14 @@ class Parsing:
         for line in temp_output_file:
             if line.startswith("@"):
                 key = line.strip()
+                #test case condition (to be deleted)
+                if key.startswith("@S"):
+                    with open ("scrn_output.txt", "w+") as scrn_output:
+                        value_scrn = address.__getitem__(key)
+                        scrn_output.write(to_16_bit(int(value_scrn)) + "\n")
+                #continuation of standard code flow
                 value = address.__getitem__(key)
                 #trial for direct conversions          
                 output_file.write(str(to_16_bit(int(value)))  + "\n")
             else:
-                output_file.write(line)
-"""
-test_add = address_dictionary()
-value_1 = test_add.__getitem__("KBD")
-value_2 = test_add.__getitem__("SCREEN")
-print(value_1)
-print(value_2)
-print(to_16_bit(int(value_1)))
-print(to_16_bit(int(value_2)))
-                                  
+                output_file.write(line)  
