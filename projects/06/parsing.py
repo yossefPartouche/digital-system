@@ -46,6 +46,11 @@ class Parsing:
             else:
                 output_file.write(line)
 """
-def to_16_bit(number):
-        return format(number, '016b')
+test_add = address_dictionary()
+value_1 = test_add.__getitem__("KBD")
+value_2 = test_add.__getitem__("SCREEN")
+print(value_1)
+print(value_2)
+print(to_16_bit(int(value_1)))
+print(to_16_bit(int(value_2)))
                                   
