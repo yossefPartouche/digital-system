@@ -1,31 +1,28 @@
 import sys
+import os
 
 class address_dictionary:
     def __init__(self):
         self.data = {}
         self.counter = 15
         self.special_cases = {
-            **{f"@R{i}": "@" + str(i) for i in range(16)},
-            "SCREEN": "@16384",
-            "KBD": "@24576" 
+            **{f"@R{i}": str(i) for i in range(16)},
+            "SCREEN": "16384",
+            "KBD": "24576" 
         }
     def __getitem__(self, key):
         if key in self.special_cases:
-            if key not in self.data:
-                self.data[key] = self.special_cases[key]
-            return self.data[key]
+            return self.data.setdefault(key, self.special_cases[key])
         elif key.startswith("@"):
-            if key not in self.data:
-                self.counter += 1
-                self.data[key] = "@" + str(self.counter)
-            return self.data[key]
-        return None
-
+            self.counter += 1
+            return self.data.setdefault(key, str(self.counter))
+def to_16_bit(number):
+        return format(number, '016b')
 class Parsing:
     #conversion for the address
     def to_16_bit(number):
         return format(number, '016b')
-
+"""
     if len(sys.argv) < 2:
         print("Usage: python script_name.py filename")
         sys.exit(1)
@@ -44,8 +41,11 @@ class Parsing:
             if line.startswith("@"):
                 key = line.strip()
                 value = address.__getitem__(key)
-                #trial for direct conversions           
-                output_file.write(str(to_16_bit(int(value[1::])))  + "\n")
+                #trial for direct conversions          
+                output_file.write(str(to_16_bit(int(value)))  + "\n")
             else:
                 output_file.write(line)
+"""
+def to_16_bit(number):
+        return format(number, '016b')
                                   
