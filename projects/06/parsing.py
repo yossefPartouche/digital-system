@@ -150,7 +150,7 @@ class Parsing:
     operate = operation()
 
     # Step 1: Process labels and assign line numbers
-    with open("Pong.asm", "r") as filter_file:
+    with open("Add.asm", "r") as filter_file:
         line_number = 0
         for line in filter_file:
             line = line.strip()
@@ -166,7 +166,7 @@ class Parsing:
                 line_number +=1
 
     # Step 4: Convert instructions to machine code
-    with open("Pong.asm", "r") as temp_output_file, open("Pong.hack", "w") as output_file:
+    with open("Add.asm", "r") as temp_output_file, open("Add.hack", "w") as output_file:
         for line in temp_output_file:
             line = line.strip()
             if line.startswith("@"):
