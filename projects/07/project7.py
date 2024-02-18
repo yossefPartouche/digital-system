@@ -1,4 +1,3 @@
-import os
 import sys
 
 
@@ -42,26 +41,30 @@ class VmTranslator:
     def write_push_pop(self, command_type_p):
         pass
 
+    def process_read_line(self, line):
+        if not line.startswith("//") and not line.strip() == "":
+            translate.process_write_line(line)
 
-    def process_read_file(self, file):
-        with open(file, "r") as input_file:
-            for line in input_file:
-                print(line)
+    def process_write_line(self, line):
 
-    def process_write_file(self):
-        pass
+        with open("file.asm", "a") as out_file:
+            out_file.write("//" + line + "\n")
+
+
+translate = VmTranslator()
+
 
 def main():
 
-    translate_vm = VmTranslator()
+    if len(sys.argv) >= 2:
+        with open(sys.argv[1], "r") as in_file:
+            for line in in_file:
+                line.strip()
+                translate.process_read_line(line)
 
-    if input_file := sys.argv and len(sys.argv) >= 2:
-        translate_vm.process_read_file(input_file)
     else:
         print("Usage: python script_name.py filename")
         sys.exit(1)
-
-
 
 
 if __name__ == "__main__":
