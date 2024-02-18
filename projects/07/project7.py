@@ -16,8 +16,9 @@ class VmTranslator:
 
     # checks whether the command type of Arithmetic or Push/Pop
 
-    def command_type(self):
-        pass
+    def command_type(self, command):
+        print(command)
+        return "a"
 
     # returns the first argument of the current command
     # i.e. C_ARITHMETIC returns (add, sub, lt, gt etc.)
@@ -44,6 +45,10 @@ class VmTranslator:
     def process_read_line(self, line):
         if not line.startswith("//") and not line.strip() == "":
             translate.process_write_line(line)
+            word = line.split()
+            print(word)
+            command = translate.command_type(word[0])
+            print(command)
 
     def process_write_line(self, line):
 
