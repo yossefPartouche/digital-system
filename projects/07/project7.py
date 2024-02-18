@@ -43,10 +43,12 @@ class VmTranslator:
         pass
 
 
-    def process_read_line(self, input_file):
-        pass
+    def process_read_file(self, file):
+        with open(file, "r") as input_file:
+            for line in input_file:
+                print(line)
 
-    def process_write_line(self):
+    def process_write_file(self):
         pass
 
 def main():
@@ -54,7 +56,7 @@ def main():
     translate_vm = VmTranslator()
 
     if input_file := sys.argv and len(sys.argv) >= 2:
-        translate_vm.process_read_line(input_file)
+        translate_vm.process_read_file(input_file)
     else:
         print("Usage: python script_name.py filename")
         sys.exit(1)
