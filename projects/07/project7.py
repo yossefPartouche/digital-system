@@ -11,7 +11,10 @@ class VmTranslator:
             "neg": "C_ARITHMATIC", "eq": "C_ARITHMATIC", "gt": "C_ARITHMATIC", "lt": "C_ARITHMATIC",
             "and": "C_ARITHMATIC", "or": "C_ARITHMATIC", "not": "C_ARITHMATIC", "label": "symbol n",
             "goto": "symbol", "if-goto": "symbol", "function" : "symbol n", "call": "symbol n", "return": "return"
-    }
+        }
+        self.kind = {
+            "local": "LCL", "argument": "ARG", "this": "THIS", "that":"THAT",
+        }
 
     # checks for more lines in the input
 
@@ -74,13 +77,15 @@ class VmTranslator:
         return []
 
     def assemble_pop(self, line_in_parts):
-
-        return []
+        if self.kind.get(line_in_parts[2]):
+            return ["@"+line_in_parts[2], "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[2]), "D=M", "@13",
+                    "D=D+M","M=D", "@SP", "M=M-1", "D=M", "@13", "A=M", "M=D"]
 
     def assemble_arithmetic(self, line_in_parts):
         if self.last_kind == "constant":
             return ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M+D",
                     "@13", "M=D", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+
 
     def assemble_symbol_n(self, line_in_parts):
         return []
