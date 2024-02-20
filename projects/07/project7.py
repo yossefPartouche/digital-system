@@ -3,6 +3,8 @@ import sys
 
 class VmTranslator:
     def __init__(self):
+        self.last_kind = None
+        lastkind = ""
 
         self.commandType = {
             "push": "C_PUSH", "pop": "C_POP", "add": "C_ARITHMATIC", "sub": "C_ARITHMATIC",
@@ -52,7 +54,7 @@ class VmTranslator:
     def assemble_push(self, line_in_parts):
         value = line_in_parts[2]
         if line_in_parts[1] == "constant":
-            return ["@"+value,"D=A", "@SP", "A=M", "M=D", "@SP","M=M+1"]
+            return ["@"+value, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "local":
             return []
         elif line_in_parts[1] == "argument":
@@ -73,25 +75,30 @@ class VmTranslator:
 
     def assemble_pop(self, line_in_parts):
 
-        return "string"
+        return []
 
     def assemble_arithmetic(self, line_in_parts):
-
-        return "string"
+        if self.last_kind == "constant":
+            return ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M+D",
+                    "@13", "M=D", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
 
     def assemble_symbol_n(self, line_in_parts):
-        return "string"
+        return []
 
     def assemble_symbol(self, line_in_parts):
-        return "string"
+        return []
 
     def assemble_return(self, line_in_parts):
-        return "string"
+        return []
 
     def process_read_line(self, line):
         if not line.startswith("//") and not line.strip() == "":
             vm_line_part = line.split()
+            print(vm_line_part)
             command_type = translate.command_type(vm_line_part[0])
+            if len(vm_line_part) > 1:
+                self.last_kind = vm_line_part[1]
+                print(self.last_kind)
             if command_type:
                 actions = {
                     "C_PUSH": self.assemble_push,
@@ -107,10 +114,11 @@ class VmTranslator:
         return
 
     def process_write_line(self, line, assembled_line):
-
-        with open("file.asm", "a") as out_file:
+        with open("StackArithmetic/SimpleAdd/SimpleAdd.asm", "a") as out_file:
             out_file.write("//" + line + "\n")
-            out_file.write(assembled_line + "\n")
+            for instruction in assembled_line:
+                out_file.write(instruction + "\n")
+
 
 translate = VmTranslator()
 
