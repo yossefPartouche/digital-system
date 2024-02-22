@@ -3,9 +3,6 @@ import sys
 
 class VmTranslator:
     def __init__(self):
-        self.last_kind = None
-        lastkind = ""
-
         self.commandType = {
             "push": "C_PUSH", "pop": "C_POP", "add": "C_ARITHMATIC", "sub": "C_ARITHMATIC",
             "neg": "C_ARITHMATIC", "eq": "C_ARITHMATIC", "gt": "C_ARITHMATIC", "lt": "C_ARITHMATIC",
@@ -14,6 +11,22 @@ class VmTranslator:
         }
         self.kind = {
             "local": "LCL", "argument": "ARG", "this": "THIS", "that": "THAT",
+        }
+        # Writes to the output file the Assembly equivalent of code
+        # Arithmatic/logical commands
+        self.assemble_arithmetic = {
+            "add": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M+D"],
+            "sub": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D"],
+            "neg": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "D=M+1", "M=D"],
+            "eq": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
+                   "@EQUAL", "D;JEQ", "M=0", "@END_EQ", "0;JMP", "(EQUAL)", "M=1", "(END_EQ)"],
+            "gt": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
+                   "@GT", "D;JGT", "M=0", "@END_GT", "0;JMP", "(GT)", "M=1", "(END_GT)"],
+            "lt": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
+                   "@LT", "D;JLT", "M=0", "@END_LT", "0;JMP", "(LT)", "M=1", "(END_LT)"],
+            "and": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M&D"],
+            "or": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M|D"],
+            "not": ["@SP", "M=M-1", "A=M", "D=M", "M=!D"],
         }
 
     # checks for more lines in the input
@@ -45,11 +58,6 @@ class VmTranslator:
     def arg2(self):
         pass
 
-    # Writes to the output file the Assembly equivalent of code
-    # Arithmatic/logical commands
-    def write_arithmatic(self, command_type_a):
-        pass
-
     # Writes to the output file the Assembly equivalent of code:
     # of pop and push commands
     def assemble_push(self, line_in_parts: []):
@@ -74,57 +82,44 @@ class VmTranslator:
         # IMPLEMENT HERE
         return []
 
-    def assemble_pop(self, line_in_parts):
-        if self.kind.get(line_in_parts[2]):
-            return ["@" + line_in_parts[2], "D=A", "@13", "M=D", "@" + self.kind.get(line_in_parts[2]), "D=M", "@13",
+    def assemble_pop(self, line_in_parts: []):
+        if self.kind.get(line_in_parts[1]):
+            return ["@" + line_in_parts[2], "D=A", "@13", "M=D", "@" + self.kind.get(line_in_parts[1]), "D=M", "@13",
                     "D=D+M", "M=D", "@SP", "M=M-1", "D=M", "@13", "A=M", "M=D"]
 
-    assemble_arithmetic = {
-        "add": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M+D"],
-        "sub": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D"],
-        "neg": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "D=M+1", "M=D"],
-        "eq": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
-               "@EQUAL", "D;JEQ", "M=0", "@END_EQ", "0;JMP", "(EQUAL)", "M=1", "(END_EQ)"],
-        "gt": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
-               "@GT", "D;JGT", "M=0", "@END_GT", "0;JMP", "(GT)", "M=1", "(END_GT)"],
-        "lt": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
-               "@LT", "D;JLT", "M=0", "@END_LT", "0;JMP", "(LT)", "M=1", "(END_LT)"],
-        "and": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M&D"],
-        "or" : ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M|D"],
-        "not": ["@SP", "M=M-1", "A=M", "D=M", "M=!D"],
-    }
-
-    def assemble_symbol_n(self, line_in_parts):
+    def assemble_symbol_n(self, line_in_parts : []):
         return []
 
-    def assemble_symbol(self, line_in_parts):
+    def assemble_symbol(self, line_in_parts: []):
         return []
 
-    def assemble_return(self, line_in_parts):
+    def assemble_return(self, line_in_parts : []):
         return []
 
     def process_read_line(self, line):
-        if not line.startswith("//") and not line.strip() == "":
-            vm_line_part = line.split()
-            print(vm_line_part)
-            command_type = translate.command_type(vm_line_part[0])
-            if len(vm_line_part) > 1:
-                actions = {
-                    "C_PUSH": self.assemble_push,
-                    "C_POP": self.assemble_pop,
-                    "symbol": self.assemble_symbol,
-                    "symbol_n": self.assemble_symbol_n
-                }
-                a_command = actions.get(command_type)
-                assembled = a_command(vm_line_part)
-                self.process_write_line(line, assembled)
+        assembled =[]
+        print(line)
+        vm_line_part = line.split()
+        command_type = translate.command_type(vm_line_part[0])
+        if len(vm_line_part) > 1:
+            actions = {
+                "C_PUSH": self.assemble_push,
+                "C_POP": self.assemble_pop,
+                "symbol": self.assemble_symbol,
+                "symbol_n": self.assemble_symbol_n
+            }
+            a_command = actions.get(command_type)
+            assembled = a_command(vm_line_part)
+            self.process_write_line(line, assembled)
         else:
-            arithmaic = line.get
+            arithmetic = self.assemble_arithmetic.get(line)
+            self.process_write_line(line, arithmetic)
 
     def process_write_line(self, line, assembled_line):
         with open("StackArithmetic/SimpleAdd/SimpleAdd.asm", "a") as out_file:
             out_file.write("//" + line + "\n")
             for instruction in assembled_line:
+                print(instruction)
                 out_file.write(instruction + "\n")
 
 
@@ -136,7 +131,8 @@ def main():
         with open(sys.argv[1], "r") as in_file:
             for line in in_file:
                 line.strip()
-                translate.process_read_line(line)
+                if line is not None and not line.startswith("//") and not line.strip() == "":
+                    translate.process_read_line(line)
 
     else:
         print("Usage: python script_name.py filename")
