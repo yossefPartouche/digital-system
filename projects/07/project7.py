@@ -17,7 +17,8 @@ class VmTranslator:
         # Writes to the output file the Assembly equivalent of code
         # Arithmatic/logical commands
         self.assemble_arithmetic = {
-            "add": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M+D"],
+            "add": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1",
+                    "A=M", "M=M+D"],
             "sub": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D"],
             "neg": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "D=M+1", "M=D"],
             "eq": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D","@EQUAL", "D;JEQ", "@SP",
@@ -65,7 +66,8 @@ class VmTranslator:
     def assemble_push(self, line_in_parts: []):
         value = line_in_parts[2]
         if self.kind.get(line_in_parts[1]):
-            return ["@"+value, "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[1]), "D=M", "@13", "D=D+M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+            return ["@"+value, "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[1]),
+                    "D=M", "@13", "D=D+M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "constant":
             return ["@" + value, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "static":
@@ -79,7 +81,7 @@ class VmTranslator:
         else:
         # we are dealing with a temp case
         # IMPLEMENT HERE
-        return []
+            return []
 
     def assemble_pop(self, line_in_parts: []):
         if self.kind.get(line_in_parts[1]):
