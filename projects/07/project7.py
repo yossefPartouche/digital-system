@@ -3,6 +3,8 @@ import sys
 
 class VmTranslator:
     def __init__(self):
+        self.static = 16
+        self.temp = 5
         self.commandType = {
             "push": "C_PUSH", "pop": "C_POP", "add": "C_ARITHMATIC", "sub": "C_ARITHMATIC",
             "neg": "C_ARITHMATIC", "eq": "C_ARITHMATIC", "gt": "C_ARITHMATIC", "lt": "C_ARITHMATIC",
@@ -61,15 +63,20 @@ class VmTranslator:
     # Writes to the output file the Assembly equivalent of code:
     # of pop and push commands
     def assemble_push(self, line_in_parts: []):
-        if self.kind.get(line_in_parts[1]):
-            return ["@"+line_in_parts[2], "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[1]), "D=M", "@13", "D=D+M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         value = line_in_parts[2]
-        if line_in_parts[1] == "constant":
+        if self.kind.get(line_in_parts[1]):
+            return ["@"+value, "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[1]), "D=M", "@13", "D=D+M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+        elif line_in_parts[1] == "constant":
             return ["@" + value, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "static":
-            return []
-        elif line_in_parts[1] == "pointer":
-            return []
+            out =  ["@" + value, "D=A", "@"+str(self.static), "A=M", "M=D", "@" + str(self.static), "M=M+1"]
+            self.static = self.static +1
+            return out
+        elif line_in_parts[1] == "temp":
+            out = ["@" + value, "D=A", "@" + str(self.temp), "A=M", "M=D", "@" + str(self.temp), "M=M+1"]
+            self.temp = self.temp + 1
+            return out
+        else:
         # we are dealing with a temp case
         # IMPLEMENT HERE
         return []
