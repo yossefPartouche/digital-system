@@ -18,18 +18,20 @@ class VmTranslator:
         # Arithmatic/logical commands
         self.assemble_arithmetic = {
             "add": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1",
-                    "A=M", "M=M+D"],
-            "sub": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D"],
-            "neg": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "D=M+1", "M=D"],
+                    "A=M", "M=M+D", "@SP", "M=M+1"],
+            "sub": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1"],
+            "neg": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "D=M+1", "M=D", "@SP", "M=M+1"],
             "eq": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D","@EQUAL", "D;JEQ", "@SP",
-                   "A=M", "M=0", "@END_EQ", "0;JMP", "(EQUAL)", "@SP", "A=M", "M=1", "(END_EQ)"],
+                   "A=M", "M=0", "@END_EQ", "0;JMP", "(EQUAL)", "@SP", "A=M", "M=1", "(END_EQ)","@SP", "M=M+1"],
             "gt": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
-                   "@GT", "D;JGT", "@SP", "A=M", "M=0", "@END_GT", "0;JMP", "(GT)", "@SP", "A=M", "M=1", "(END_GT)"],
+                   "@GT", "D;JGT", "@SP", "A=M", "M=0", "@END_GT", "0;JMP", "(GT)",
+                   "@SP", "A=M", "M=1", "(END_GT)", "@SP", "M=M+1"],
             "lt": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
-                   "@LT", "D;JLT", "@SP", "A=M", "M=0", "@END_LT", "0;JMP", "(LT)", "@SP", "A=M", "M=1", "(END_LT)"],
-            "and": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M&D"],
-            "or": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M|D"],
-            "not": ["@SP", "M=M-1", "A=M", "D=M", "M=!D"],
+                   "@LT", "D;JLT", "@SP", "A=M", "M=0", "@END_LT",
+                   "0;JMP", "(LT)", "@SP", "A=M", "M=1", "(END_LT)", "@SP", "M=M+1"],
+            "and": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M&D", "@SP", "M=M+1"],
+            "or": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M|D", "@SP", "M=M+1"],
+            "not": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "@SP", "M=M+1"],
         }
 
     # checks for more lines in the input
@@ -71,17 +73,17 @@ class VmTranslator:
         elif line_in_parts[1] == "constant":
             return ["@" + value, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "static":
-            out =  ["@" + value, "D=A", "@"+str(self.static), "A=M", "M=D", "@" + str(self.static), "M=M+1"]
+            out =["@" + value, "D=A", "@"+str(self.static), "A=M", "M=D", "@" + str(self.static), "M=M+1"]
             self.static = self.static +1
             return out
         elif line_in_parts[1] == "temp":
             out = ["@" + value, "D=A", "@" + str(self.temp), "A=M", "M=D", "@" + str(self.temp), "M=M+1"]
             self.temp = self.temp + 1
             return out
+        elif line_in_parts[1] == "pointer" and line_in_parts[2] == 0:
+            return ["@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         else:
-        # we are dealing with a temp case
-        # IMPLEMENT HERE
-            return []
+            return ["@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
 
     def assemble_pop(self, line_in_parts: []):
         if self.kind.get(line_in_parts[1]):
@@ -99,7 +101,6 @@ class VmTranslator:
 
     def process_read_line(self, line):
         assembled =[]
-        print(line)
         vm_line_part = line.split()
         command_type = translate.command_type(vm_line_part[0])
         if len(vm_line_part) > 1:
@@ -113,7 +114,7 @@ class VmTranslator:
             assembled = a_command(vm_line_part)
             self.process_write_line(line, assembled)
         else:
-            arithmetic = self.assemble_arithmetic.get(line)
+            arithmetic = self.assemble_arithmetic.get(line.strip())
             self.process_write_line(line, arithmetic)
 
     def process_write_line(self, line, assembled_line):
