@@ -134,16 +134,13 @@ class VmTranslator:
             a_command = actions.get(command_type)
             assemble = a_command(vm_line_part)
         elif line.strip() == "gt":
-            print(line)
-            assemble = self.assemble_gt()
+            self.process_write_line(line,self.assemble_gt())
         elif line.strip() == "lt":
-            assemble = self.assemble_lt()
+            self.process_write_line(line, self.assemble_lt())
         elif line.strip() == "eq":
-            assemble = self.assemble_eq()
+            self.process_write_line(line,self.assemble_eq())
         else:
-            assemble = self.assemble_arithmatic.get(line.strip())
-
-        self.process_write_line(line, assemble)
+            self.process_write_line(line,self.assemble_arithmatic.get(line.strip()))
 
     def process_write_line(self, line, assembled_line):
         with open("StackArithmetic/StackTest/StackTest.asm", "a") as out_file:
