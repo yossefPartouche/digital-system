@@ -19,9 +19,9 @@ class VmTranslator:
             "add": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1",
                     "A=M", "M=M+D", "@SP", "M=M+1"],
             "sub": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1"],
-            "neg": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "D=M+1", "M=D", "@SP", "M=M+1"],
-            "and": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M&D", "@SP", "M=M+1"],
-            "or": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M|D", "@SP", "M=M+1"],
+            "neg": ["@SP", "M=M-1", "A=M", "D=M", "M=-D", "@SP", "M=M+1"],
+            "and": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M&D", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            "or": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M|D", "@SP", "A=M", "M=D", "@SP", "M=M+1"],
             "not": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "@SP", "M=M+1"],
         }
         # Writes to the output file the Assembly equivalent of code
@@ -51,7 +51,7 @@ class VmTranslator:
             f"@{gt_label}", "D;JGT",
             "@SP", "A=M", "M=0",
             f"@{end_gt_label}", "0;JMP",
-            f"({gt_label}", "@SP", "A=M", "M=1",
+            f"({gt_label})", "@SP", "A=M", "M=-1",
             f"({end_gt_label})", "@SP", "M=M+1"
         ]
 
@@ -65,7 +65,7 @@ class VmTranslator:
             f"@{lt_label}", "D;JLT",
             "@SP", "A=M", "M=0",
             f"@{end_lt_label}", "0;JMP",
-            f"({lt_label})", "@SP", "A=M", "M=1",
+            f"({lt_label})", "@SP", "A=M", "M=-1",
             f"({end_lt_label})", "@SP", "M=M+1"
         ]
 
@@ -133,6 +133,7 @@ class VmTranslator:
             }
             a_command = actions.get(command_type)
             assemble = a_command(vm_line_part)
+            self.process_write_line(line, assemble)
         elif line.strip() == "gt":
             self.process_write_line(line,self.assemble_gt())
         elif line.strip() == "lt":
