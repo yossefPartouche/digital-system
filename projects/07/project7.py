@@ -133,14 +133,15 @@ class VmTranslator:
             }
             a_command = actions.get(command_type)
             assemble = a_command(vm_line_part)
-        elif line == "gt":
+        elif line.strip() == "gt":
+            print(line)
             assemble = self.assemble_gt()
-        elif line == "lt":
+        elif line.strip() == "lt":
             assemble = self.assemble_lt()
-        elif line == "eq":
+        elif line.strip() == "eq":
             assemble = self.assemble_eq()
         else:
-            assemble = self.assemble_arithmatic.get(line)
+            assemble = self.assemble_arithmatic.get(line.strip())
 
         self.process_write_line(line, assemble)
 
