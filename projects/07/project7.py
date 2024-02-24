@@ -1,10 +1,11 @@
 import sys
-
-
 class VmTranslator:
     def __init__(self):
         self.static = 16
         self.temp = 5
+        self.eq_count = 0
+        self.gt_count = 0
+        self.lt_count = 0
         self.commandType = {
             "push": "C_PUSH", "pop": "C_POP", "add": "C_ARITHMATIC", "sub": "C_ARITHMATIC",
             "neg": "C_ARITHMATIC", "eq": "C_ARITHMATIC", "gt": "C_ARITHMATIC", "lt": "C_ARITHMATIC",
@@ -14,50 +15,69 @@ class VmTranslator:
         self.kind = {
             "local": "LCL", "argument": "ARG", "this": "THIS", "that": "THAT",
         }
-        # Writes to the output file the Assembly equivalent of code
-        # Arithmatic/logical commands
-        self.assemble_arithmetic = {
+        self.assemble_arithmatic = {
             "add": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1",
                     "A=M", "M=M+D", "@SP", "M=M+1"],
             "sub": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "M=M-D", "@SP", "M=M+1"],
             "neg": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "D=M+1", "M=D", "@SP", "M=M+1"],
-            "eq": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D","@EQUAL", "D;JEQ", "@SP",
-                   "A=M", "M=0", "@END_EQ", "0;JMP", "(EQUAL)", "@SP", "A=M", "M=1", "(END_EQ)","@SP", "M=M+1"],
-            "gt": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
-                   "@GT", "D;JGT", "@SP", "A=M", "M=0", "@END_GT", "0;JMP", "(GT)",
-                   "@SP", "A=M", "M=1", "(END_GT)", "@SP", "M=M+1"],
-            "lt": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M-D",
-                   "@LT", "D;JLT", "@SP", "A=M", "M=0", "@END_LT",
-                   "0;JMP", "(LT)", "@SP", "A=M", "M=1", "(END_LT)", "@SP", "M=M+1"],
             "and": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M&D", "@SP", "M=M+1"],
             "or": ["@SP", "M=M-1", "A=M", "D=M", "@SP", "M=M-1", "A=M", "D=M|D", "@SP", "M=M+1"],
             "not": ["@SP", "M=M-1", "A=M", "D=M", "M=!D", "@SP", "M=M+1"],
         }
+        # Writes to the output file the Assembly equivalent of code
+        # Arithmatic/logical commands
 
-    # checks for more lines in the input
+    def assemble_eq(self):
+        self.eq_count += 1
+        equal_label = f"EQUAL_{self.eq_count}"
+        end_label = f"END_EQ_{self.eq_count}"
+        return [
+            "@SP", "M=M-1", "A=M", "D=M",
+            "@SP", "M=M-1", "A=M", "D=M-D",
+            f"@{equal_label}", "D;JEQ",
+            "@SP", "A=M", "M=0",
+            f"@{end_label}", "0;JMP",
+            f"({equal_label})", "@SP", "A=M", "M=-1",
+            f"({end_label})", "@SP", "M=M+1"
+        ]
 
-    def has_more_lines(self):
-        pass
+    def assemble_gt(self):
+        self.gt_count +=1
+        gt_label = f"GT_{self.gt_count}"
+        end_gt_label = f"END_GT_{self.gt_count}"
+        return [
+            "@SP", "M=M-1", "A=M", "D=M",
+            "@SP", "M=M-1", "A=M", "D=M-D",
+            f"@{gt_label}", "D;JGT",
+            "@SP", "A=M", "M=0",
+            f"@{end_gt_label}", "0;JMP",
+            f"({gt_label}", "@SP", "A=M", "M=1",
+            f"({end_gt_label})", "@SP", "M=M+1"
+        ]
 
-    # Advances to the next line of the file
-    # Applied when has_more_lines returns true
-
-    def advance(self):
-        pass
+    def assemble_lt(self):
+        self.lt_count +=1
+        lt_label = f"LT_{self.lt_count}"
+        end_lt_label = f"END_LT_{self.lt_count}"
+        return [
+            "@SP", "M=M-1", "A=M", "D=M",
+            "@SP", "M=M-1", "A=M", "D=M-D",
+            f"@{lt_label}", "D;JLT",
+            "@SP", "A=M", "M=0",
+            f"@{end_lt_label}", "0;JMP",
+            f"({lt_label})", "@SP", "A=M", "M=1",
+            f"({end_lt_label})", "@SP", "M=M+1"
+        ]
 
     # checks whether the command type of Arithmetic or Push/Pop or otherwiseS
 
     def command_type(self, command: str):
-
         return self.commandType.get(command)
-
     # returns the first argument of the current command
     # i.e. C_ARITHMETIC returns (add, sub, lt, gt etc.)
     # IMPORTANT: not to be called if the current command is C_COMMAND
-
     def arg1(self):
         pass
-
     # returns the second argument of the current command
     # parameters: command_type = C_PUSH, C_POP, C_FUNCTION or C_CALL
     def arg2(self):
@@ -66,18 +86,19 @@ class VmTranslator:
     # Writes to the output file the Assembly equivalent of code:
     # of pop and push commands
     def assemble_push(self, line_in_parts: []):
-        value = line_in_parts[2]
+        value = int(line_in_parts[2].strip())
+        at_add = "@" + str(value)
         if self.kind.get(line_in_parts[1]):
-            return ["@"+value, "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[1]),
+            return [at_add, "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[1]),
                     "D=M", "@13", "D=D+M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "constant":
-            return ["@" + value, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+            return [at_add, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "static":
-            out =["@" + value, "D=A", "@"+str(self.static), "A=M", "M=D", "@" + str(self.static), "M=M+1"]
+            out =[at_add, "D=A", "@"+str(self.static), "A=M", "M=D", "@" + str(self.static), "M=M+1"]
             self.static = self.static +1
             return out
         elif line_in_parts[1] == "temp":
-            out = ["@" + value, "D=A", "@" + str(self.temp), "A=M", "M=D", "@" + str(self.temp), "M=M+1"]
+            out = [at_add, "D=A", "@" + str(self.temp), "A=M", "M=D", "@" + str(self.temp), "M=M+1"]
             self.temp = self.temp + 1
             return out
         elif line_in_parts[1] == "pointer" and line_in_parts[2] == 0:
@@ -100,7 +121,7 @@ class VmTranslator:
         return []
 
     def process_read_line(self, line):
-        assembled =[]
+        assemble =[]
         vm_line_part = line.split()
         command_type = translate.command_type(vm_line_part[0])
         if len(vm_line_part) > 1:
@@ -111,14 +132,20 @@ class VmTranslator:
                 "symbol_n": self.assemble_symbol_n
             }
             a_command = actions.get(command_type)
-            assembled = a_command(vm_line_part)
-            self.process_write_line(line, assembled)
+            assemble = a_command(vm_line_part)
+        elif line == "gt":
+            assemble = self.assemble_gt()
+        elif line == "lt":
+            assemble = self.assemble_lt()
+        elif line == "eq":
+            assemble = self.assemble_eq()
         else:
-            arithmetic = self.assemble_arithmetic.get(line.strip())
-            self.process_write_line(line, arithmetic)
+            assemble = self.assemble_arithmatic.get(line)
+
+        self.process_write_line(line, assemble)
 
     def process_write_line(self, line, assembled_line):
-        with open("StackArithmetic/SimpleAdd/SimpleAdd.asm", "a") as out_file:
+        with open("StackArithmetic/StackTest/StackTest.asm", "a") as out_file:
             out_file.write("//" + line + "\n")
             for instruction in assembled_line:
                 print(instruction)
