@@ -44,7 +44,7 @@ class VmTranslator:
         ]
 
     def assemble_gt(self):
-        self.gt_count +=1
+        self.gt_count += 1
         gt_label = f"GT_{self.gt_count}"
         end_gt_label = f"END_GT_{self.gt_count}"
         return [
@@ -58,7 +58,7 @@ class VmTranslator:
         ]
 
     def assemble_lt(self):
-        self.lt_count +=1
+        self.lt_count += 1
         lt_label = f"LT_{self.lt_count}"
         end_lt_label = f"END_LT_{self.lt_count}"
         return [
@@ -75,11 +75,13 @@ class VmTranslator:
 
     def command_type(self, command: str):
         return self.commandType.get(command)
+
     # returns the first argument of the current command
     # i.e. C_ARITHMETIC returns (add, sub, lt, gt etc.)
     # IMPORTANT: not to be called if the current command is C_COMMAND
     def arg1(self):
         pass
+
     # returns the second argument of the current command
     # parameters: command_type = C_PUSH, C_POP, C_FUNCTION or C_CALL
     def arg2(self):
@@ -90,8 +92,12 @@ class VmTranslator:
     def assemble_push(self, line_in_parts: []):
         i = "@" + line_in_parts[2]
         if self.kind.get(line_in_parts[1]):
-            return [i, "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[1]),
-                    "D=M", "@13", "D=D+M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+            return [
+                i, "D=A", "@13", "M=D",
+                "@" + self.kind.get(line_in_parts[1]),
+                "D=M", "@13", "D=D+M", "A=D", "D=M",
+                "@SP", "A=M", "M=D", "@SP", "M=M+1"
+            ]
         elif line_in_parts[1] == "constant":
             return [i, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "static":
@@ -105,7 +111,7 @@ class VmTranslator:
             out = [i, "D=A", "@" + str(self.temp), "A=M", "M=D", "@" + str(self.temp), "M=M+1"]
             self.temp = self.temp + 1
             return out
-        elif line_in_parts[1] == "pointer" and line_in_parts[2] == 0:
+        elif line_in_parts[1] == "pointer" and line_in_parts[2] == "0":
             return ["@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         else:
             return ["@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
@@ -113,27 +119,52 @@ class VmTranslator:
     def assemble_pop(self, line_in_parts: []):
         i = "@" + line_in_parts[2]
         if self.kind.get(line_in_parts[1]):
-            return [i, "D=A", "@13", "M=D", "@" + self.kind.get(line_in_parts[1]), "D=M", "@13",
-                    "D=D+M", "M=D", "@SP", "M=M-1", "D=M", "@13", "A=M", "M=D"]
+            return [
+                i, "D=A", "@13", "M=D",
+                "@" + self.kind.get(line_in_parts[1]),
+                "D=M", "@13", "D=D+M", "M=D",
+                "@SP", "M=M-1", "A=M", "D=M", "@13", "A=M",
+                "M=D"
+            ]
         elif line_in_parts[1] == "static":
             return [
-                "@SP", "M=M-1", "A=M", "D=M",
-                "@13", "M=D",
-                i, "D=A", self.static, "D=A+D",
-                "@14", "M=D", "@13", "D=M", "@14", "A=M", "M=D"
+                "@SP", "M=M-1", "A=M", "D=M", "@13", "M=D",
+                i, "D=A", self.static, "D=A+D", "@14", "M=D",
+                "@13", "D=M", "@14", "A=M", "M=D"
+            ]
+        elif line_in_parts[1] == "pointer" and line_in_parts[2] == "0":
+            return [
+                "@SP", "M=M-1", "A=M", "D=M", "@THIS", "M=D"
+            ]
+        else:
+            return [
+                "@SP", "M=M-1", "A=M", "D=M", "@THAT", "M=D"
             ]
 
-    def assemble_symbol_n(self, line_in_parts : []):
+        #elif line_in_parts[1] == "this":
+        #    return [
+        #        "@SP", "M=M-1", "A=M", "D=M", "@13", "M=D",
+        #        i, "D=A", "@THIS" "D=D+M", "@14", "M=D",
+        #        "@13", "D=M", "@14", "A=M", "M=D"
+        #    ]
+        #elif line_in_parts[1] == "that":
+        #    return [
+        #        "@SP", "M=M-1", "A=M", "D=M", "@13", "M=D",
+        #        i, "D=A", "@THAT" "D=D+M", "@14", "M=D",
+        #        "@13", "D=M", "@14", "A=M", "M=D"
+        #    ]
+
+    def assemble_symbol_n(self, line_in_parts: []):
         return []
 
     def assemble_symbol(self, line_in_parts: []):
         return []
 
-    def assemble_return(self, line_in_parts : []):
+    def assemble_return(self, line_in_parts: []):
         return []
 
     def process_read_line(self, line):
-        assemble =[]
+        assemble = []
         vm_line_part = line.split()
         command_type = translate.command_type(vm_line_part[0])
         if len(vm_line_part) > 1:
@@ -147,16 +178,16 @@ class VmTranslator:
             assemble = a_command(vm_line_part)
             self.process_write_line(line, assemble)
         elif line.strip() == "gt":
-            self.process_write_line(line,self.assemble_gt())
+            self.process_write_line(line, self.assemble_gt())
         elif line.strip() == "lt":
             self.process_write_line(line, self.assemble_lt())
         elif line.strip() == "eq":
-            self.process_write_line(line,self.assemble_eq())
+            self.process_write_line(line, self.assemble_eq())
         else:
-            self.process_write_line(line,self.assemble_arithmatic.get(line.strip()))
+            self.process_write_line(line, self.assemble_arithmatic.get(line.strip()))
 
     def process_write_line(self, line, assembled_line):
-        with open("MemoryAccess/StaticTest/StaticTest.asm", "a") as out_file:
+        with open("MemoryAccess/PointerTest/PointerTest.asm", "a") as out_file:
             out_file.write("//" + line + "\n")
             for instruction in assembled_line:
                 print(instruction)
