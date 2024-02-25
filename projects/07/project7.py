@@ -1,7 +1,9 @@
 import sys
+
+
 class VmTranslator:
     def __init__(self):
-        self.static = 16
+        self.static = "@"+16
         self.temp = 5
         self.eq_count = 0
         self.gt_count = 0
@@ -86,19 +88,16 @@ class VmTranslator:
     # Writes to the output file the Assembly equivalent of code:
     # of pop and push commands
     def assemble_push(self, line_in_parts: []):
-        value = int(line_in_parts[2].strip())
-        at_add = "@" + str(value)
+        i = "@" + line_in_parts[2]
         if self.kind.get(line_in_parts[1]):
-            return [at_add, "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[1]),
+            return [i, "D=A", "@13", "M=D", "@"+self.kind.get(line_in_parts[1]),
                     "D=M", "@13", "D=D+M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "constant":
-            return [at_add, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+            return [i, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "static":
-            out =[at_add, "D=A", "@"+str(self.static), "A=M", "M=D", "@" + str(self.static), "M=M+1"]
-            self.static = self.static +1
-            return out
+            return [i, "D=A", "@"+str(self.static), "A=M", "M=D", "@" + str(self.static), "M=M+1"]
         elif line_in_parts[1] == "temp":
-            out = [at_add, "D=A", "@" + str(self.temp), "A=M", "M=D", "@" + str(self.temp), "M=M+1"]
+            out = [i, "D=A", "@" + str(self.temp), "A=M", "M=D", "@" + str(self.temp), "M=M+1"]
             self.temp = self.temp + 1
             return out
         elif line_in_parts[1] == "pointer" and line_in_parts[2] == 0:
@@ -107,9 +106,12 @@ class VmTranslator:
             return ["@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
 
     def assemble_pop(self, line_in_parts: []):
+        i = "@" + line_in_parts[2]
         if self.kind.get(line_in_parts[1]):
-            return ["@" + line_in_parts[2], "D=A", "@13", "M=D", "@" + self.kind.get(line_in_parts[1]), "D=M", "@13",
+            return [i, "D=A", "@13", "M=D", "@" + self.kind.get(line_in_parts[1]), "D=M", "@13",
                     "D=D+M", "M=D", "@SP", "M=M-1", "D=M", "@13", "A=M", "M=D"]
+        elif line_in_parts[1] == "static":
+            return ["@SP", "M=M-1", "D=M", "@13", "M=D", i, "D=A", self.static, "A=A+D", "@13", "D=M", "M=D"]
 
     def assemble_symbol_n(self, line_in_parts : []):
         return []
@@ -144,7 +146,7 @@ class VmTranslator:
             self.process_write_line(line,self.assemble_arithmatic.get(line.strip()))
 
     def process_write_line(self, line, assembled_line):
-        with open("StackArithmetic/StackTest/StackTest.asm", "a") as out_file:
+        with open("MemoryAccess/StaticTest/StaticTest.asm", "a") as out_file:
             out_file.write("//" + line + "\n")
             for instruction in assembled_line:
                 print(instruction)
