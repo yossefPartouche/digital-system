@@ -3,7 +3,7 @@ import sys
 
 class VmTranslator:
     def __init__(self):
-        self.static = "@"+16
+        self.static = "@16"
         self.temp = 5
         self.eq_count = 0
         self.gt_count = 0
@@ -95,7 +95,12 @@ class VmTranslator:
         elif line_in_parts[1] == "constant":
             return [i, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "static":
-            return [i, "D=A", "@"+str(self.static), "A=M", "M=D", "@" + str(self.static), "M=M+1"]
+            return [
+                i, "D=A", self.static, "D=A+D",
+                "A=D", "D=M",
+                "@SP", "A=M", "M=D",
+                "@SP", "M=M+1"
+            ]
         elif line_in_parts[1] == "temp":
             out = [i, "D=A", "@" + str(self.temp), "A=M", "M=D", "@" + str(self.temp), "M=M+1"]
             self.temp = self.temp + 1
@@ -111,7 +116,12 @@ class VmTranslator:
             return [i, "D=A", "@13", "M=D", "@" + self.kind.get(line_in_parts[1]), "D=M", "@13",
                     "D=D+M", "M=D", "@SP", "M=M-1", "D=M", "@13", "A=M", "M=D"]
         elif line_in_parts[1] == "static":
-            return ["@SP", "M=M-1", "D=M", "@13", "M=D", i, "D=A", self.static, "A=A+D", "@13", "D=M", "M=D"]
+            return [
+                "@SP", "M=M-1", "A=M", "D=M",
+                "@13", "M=D",
+                i, "D=A", self.static, "D=A+D",
+                "@14", "M=D", "@13", "D=M", "@14", "A=M", "M=D"
+            ]
 
     def assemble_symbol_n(self, line_in_parts : []):
         return []
