@@ -4,7 +4,7 @@ import sys
 class VmTranslator:
     def __init__(self):
         self.static = "@16"
-        self.temp = 5
+        self.temp = "@5"
         self.eq_count = 0
         self.gt_count = 0
         self.lt_count = 0
@@ -108,9 +108,12 @@ class VmTranslator:
                 "@SP", "M=M+1"
             ]
         elif line_in_parts[1] == "temp":
-            out = [i, "D=A", "@" + str(self.temp), "A=M", "M=D", "@" + str(self.temp), "M=M+1"]
-            self.temp = self.temp + 1
-            return out
+            return [
+                i, "D=A", self.temp, "D=A+D",
+                "A=D", "D=M",
+                "@SP", "A=M", "M=D",
+                "@SP", "M=M+1"
+            ]
         elif line_in_parts[1] == "pointer" and line_in_parts[2] == "0":
             return ["@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         else:
@@ -132,6 +135,12 @@ class VmTranslator:
                 i, "D=A", self.static, "D=A+D", "@14", "M=D",
                 "@13", "D=M", "@14", "A=M", "M=D"
             ]
+        elif line_in_parts[1] == "temp":
+            return [
+                "@SP", "M=M-1", "A=M", "D=M", "@13", "M=D",
+                i, "D=A", self.temp, "D=A+D", "@14", "M=D",
+                "@13", "D=M", "@14", "A=M", "M=D"
+            ]
         elif line_in_parts[1] == "pointer" and line_in_parts[2] == "0":
             return [
                 "@SP", "M=M-1", "A=M", "D=M", "@THIS", "M=D"
@@ -140,19 +149,6 @@ class VmTranslator:
             return [
                 "@SP", "M=M-1", "A=M", "D=M", "@THAT", "M=D"
             ]
-
-        #elif line_in_parts[1] == "this":
-        #    return [
-        #        "@SP", "M=M-1", "A=M", "D=M", "@13", "M=D",
-        #        i, "D=A", "@THIS" "D=D+M", "@14", "M=D",
-        #        "@13", "D=M", "@14", "A=M", "M=D"
-        #    ]
-        #elif line_in_parts[1] == "that":
-        #    return [
-        #        "@SP", "M=M-1", "A=M", "D=M", "@13", "M=D",
-        #        i, "D=A", "@THAT" "D=D+M", "@14", "M=D",
-        #        "@13", "D=M", "@14", "A=M", "M=D"
-        #    ]
 
     def assemble_symbol_n(self, line_in_parts: []):
         return []
