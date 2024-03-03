@@ -156,26 +156,34 @@ class VmTranslator:
 
     def assemble_symbol(self, line_in_parts: []):
         return []
-
-    def assemble_return(self, line_in_parts: []):
-        # Stores the memory in the local somewhere temp13
-        end_frame = ["@LCL", "D=M", "@13", "M=D"]
-
-        # Calculates the end frame using the value store in temp13
-        ret_add = ["@LCL", "D=M", "@14", "M=D", "@5", "D=A", "@14", "M=M-D"]
-
-        # takes the memory in the end-frame and stores it somewhere temp15
-        potentially_useful = ["@14", "D=M", "@15", "M=D"]
-
-        # 1) Takes data stored inside temp13 to be an address
-        # 2) Then retrieves the data and stores it *at the memory stored within Args*
-        # *Taking the data stored within args converting to address and then storing the data inside there
-        step_1 = ["@13", "A=M", "D=M", "@ARG", "A=M", "M=D"]
-        # Convert SP back to its caller frame by taking data of (args + 1) to be the new value for SP
-        sp_conv = ["@ARG", "D=M-1", "@SP", "M=D"]
-        # Restore THIS, THAT, ARG, LCL
-        # goto retAddr
-        return []
+    def assemble_return(self):
+        return [
+            # RAM[LCL] => RAM[13]
+            "@LCL", "D=M", "@13", "M=D",
+            # string return address
+            # RAM[13] => RAM[14]
+            "@13", "D=M", "@14", "M=D",
+            # RAM[14] = RAM[14] -5
+            "@5", "D=A", "@14", "M=M-D",
+            "A=M", "D=M", "@14", "M=D",
+            # RAM[SP] = RAM[SP] -1
+            "@SP", "M=M-1",
+            # RAM[RAM[SP]] = RAM[RAM[ARG]]
+            "A=M", "D=M",
+            # ^^^^ obtained RAM[RAM[SP]]
+            "@ARG", "A=M", "M=D",
+            # converting back RAM[SP] to caller frame
+            "@ARG", "M=M+1", "D=M", "@SP", "M=D",
+            # //duplicating the value at RAM[13] in RAM[15]
+            "@ 13", "D=M", "@15", "M=D",
+            # Return LCL, ARG, THIS, THAT, to caller Frame
+            "@15", "M=M-1", "A=M", "D=M", "@THAT", "M=D",
+            "@15", "M=M-1", "A=M", "D=M", "@THIS", "M=D",
+            "@15", "M=M-1", "A=M", "D=M", "@ARG", "M=D",
+            "@15", "M=M-1", "A=M", "D=M", "@LCL", "M=D",
+            # goto return address
+            "@13", "A=M", "0;JMP"
+        ]
 
     def process_read_line(self, line, output_path):
         assemble = []
@@ -197,6 +205,8 @@ class VmTranslator:
             self.process_write_line(line, self.assemble_lt(), output_path)
         elif line.strip() == "eq":
             self.process_write_line(line, self.assemble_eq(), output_path)
+        elif line.strip() == "return":
+            self.process_write_line(line, self.assemble_return(), output_path)
         else:
             self.process_write_line(line, self.assemble_arithmatic.get(line.strip()), output_path)
 
