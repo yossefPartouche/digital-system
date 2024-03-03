@@ -158,6 +158,23 @@ class VmTranslator:
         return []
 
     def assemble_return(self, line_in_parts: []):
+        # Stores the memory in the local somewhere temp13
+        end_frame = ["@LCL", "D=M", "@13", "M=D"]
+
+        # Calculates the end frame using the value store in temp13
+        ret_add = ["@LCL", "D=M", "@14", "M=D", "@5", "D=A", "@14", "M=M-D"]
+
+        # takes the memory in the end-frame and stores it somewhere temp15
+        potentially_useful = ["@14", "D=M", "@15", "M=D"]
+
+        # 1) Takes data stored inside temp13 to be an address
+        # 2) Then retrieves the data and stores it *at the memory stored within Args*
+        # *Taking the data stored within args converting to address and then storing the data inside there
+        step_1 = ["@13", "A=M", "D=M", "@ARG", "A=M", "M=D"]
+        # Convert SP back to its caller frame by taking data of (args + 1) to be the new value for SP
+        sp_conv = ["@ARG", "D=M-1", "@SP", "M=D"]
+        # Restore THIS, THAT, ARG, LCL
+        # goto retAddr
         return []
 
     def process_read_line(self, line, output_path):
@@ -187,7 +204,6 @@ class VmTranslator:
         with open(output_path, "a") as out_file:
             out_file.write("//" + line + "\n")
             for instruction in assembled_line:
-                print(instruction)
                 out_file.write(instruction + "\n")
 
 
@@ -209,11 +225,12 @@ def main():
                 if line and not line.startswith("//"):
                     translate.process_read_line(line, output_path)
 
-    elif input_path.endswith('/'):  # If the input is a directory
+    elif os.path.isdir(input_path): # If the input is a directory
         # Process all .vm files in the directory
         for filename in os.listdir(input_path):
             if filename.endswith('.vm'):
-                output_path = filename[:-3] + ".asm"
+                output_file = filename[:-3] + ".asm"
+                output_path = os.path.join(input_path, output_file)
                 vm_file_path = os.path.join(input_path, filename)
                 with open(vm_file_path, "r") as vm_file:
                     for line in vm_file:
@@ -223,6 +240,8 @@ def main():
 
     else:
         print("Invalid input path:", input_path)
+        print("Usage: if you tried to add a directory make sure to add the '/' at the end of the path name")
+        print("Or make sure path is from the root")
         sys.exit(1)
 
 
