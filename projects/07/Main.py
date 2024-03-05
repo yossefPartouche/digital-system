@@ -9,6 +9,8 @@ class VmTranslator:
         self.eq_count = 0
         self.gt_count = 0
         self.lt_count = 0
+        self.count = 0
+        self.labels = {}
         self.commandType = {
             "push": "C_PUSH", "pop": "C_POP", "add": "C_ARITHMATIC", "sub": "C_ARITHMATIC",
             "neg": "C_ARITHMATIC", "eq": "C_ARITHMATIC", "gt": "C_ARITHMATIC", "lt": "C_ARITHMATIC",
@@ -77,17 +79,6 @@ class VmTranslator:
     def command_type(self, command: str):
         return self.commandType.get(command)
 
-    # returns the first argument of the current command
-    # i.e. C_ARITHMETIC returns (add, sub, lt, gt etc.)
-    # IMPORTANT: not to be called if the current command is C_COMMAND
-    def arg1(self):
-        pass
-
-    # returns the second argument of the current command
-    # parameters: command_type = C_PUSH, C_POP, C_FUNCTION or C_CALL
-    def arg2(self):
-        pass
-
     # Writes to the output file the Assembly equivalent of code:
     # of pop and push commands
     def assemble_push(self, line_in_parts: []):
@@ -150,12 +141,51 @@ class VmTranslator:
             return [
                 "@SP", "M=M-1", "A=M", "D=M", "@THAT", "M=D"
             ]
+    def assemble_if_goto(self, label_name):
+        return ["@" + self.labels.get(label_name), "D;JLT"]
+    def assemble_goto(self, label_name):
+        return ["@" + self.labels.get(label_name), "0;JMP"]
 
-    def assemble_symbol_n(self, line_in_parts: []):
-        return []
+    def assemble_label(self, label_name: str):
+        return ["(" + self.labels.get(label_name) + ")"]
 
-    def assemble_symbol(self, line_in_parts: []):
-        return []
+    # potentialy at to the parameter a return adrress
+
+    def assemble_call(self, function_name, num_args):
+        return [
+            # Not to sure if return address has to be changed to something unique
+            "@return_address", "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1",
+            # Save LCL, ARG, THIS, THAT
+            "@LCL", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
+            "@ARG", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
+            "@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
+            "@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
+            # Reposition ARG for the called function
+            "@SP", "D=M", f"@{num_args + 5}", "D=D-A", "@ARG", "M=D",
+            # Reposition LCL for the called function
+            "@SP", "D=M", "@LCL", "M=D",
+            # Jump to function
+            f'@{function_name}', "0;JMP",
+            # Define return address label
+            "(return_address)"
+        ]
+    def assemble_function(self, function_name, num_args):
+        return [
+            "(" + self.labels.get(function_name) + ")",
+            # stores the number of arguments in the stack of the frame
+            "@num_args", "D=A", "@SP", "A=M", "M=D",
+            # Setting the local pointer segment to that of the SP before commencing of the function
+            "@SP", "D=M", "@LCL", "M=D",
+            # Push num_args 0 values to initialise the callee
+            # we create a small loop to do this
+            "(init_locals_loop)", "num_args", "D=A",
+            "@init_locals_end", "D;JEQ",
+            "@SP", "A=M", "M=0", "@SP", "M=M+1",
+            "@" + num_args, "M=M-1",
+            "@init_locals_loop", "0;JMP",
+            "(" + "init_locals_end" + ")"
+        ]
+
     def assemble_return(self):
         return [
             # RAM[LCL] => RAM[13]
@@ -193,12 +223,20 @@ class VmTranslator:
             actions = {
                 "C_PUSH": self.assemble_push,
                 "C_POP": self.assemble_pop,
-                "symbol": self.assemble_symbol,
-                "symbol_n": self.assemble_symbol_n
             }
             a_command = actions.get(command_type)
             assemble = a_command(vm_line_part)
             self.process_write_line(line, assemble, output_path)
+        if line.startswith("label"):
+            self.process_write_line(line, self.assemble_label(vm_line_part[1]), output_path)
+        elif line.startswith("goto"):
+            self.process_write_line(line, self.assemble_goto(vm_line_part[1]), output_path)
+        elif line.startswith("if-goto"):
+            self.process_write_line(line, self.assemble_if_goto(vm_line_part[1]), output_path)
+        elif line.startwith("function"):
+            self.process_write_line(line, self.assemble_if_goto(vm_line_part[1], vm_line_part[2]), output_path)
+        elif line.startswith("call"):
+            self.process_write_line(line, self.assemble_call(vm_line_part[1], vm_line_part[2]), output_path)
         elif line.strip() == "gt":
             self.process_write_line(line, self.assemble_gt(), output_path)
         elif line.strip() == "lt":
@@ -229,12 +267,20 @@ def main():
 
     if input_path.endswith('.vm'):  # If the input is a single VM file
         output_path = input_path[:-3] + ".asm"
-        with open(input_path, "r") as vm_file:
+        with (open(input_path, "r") as vm_file):
+            for line in vm_file:
+                line = line.strip()
+                if line and not line.startswith("//"):
+                    if line.startswith("label") or line.startswith("function"):
+                        translate.count += 1
+                        line_in_parts = line.split()
+                        label_name = line_in_parts[1].upper() + "_" + str(translate.count)
+                        translate.labels[line_in_parts[1]] = label_name
             for line in vm_file:
                 line = line.strip()
                 if line and not line.startswith("//"):
                     translate.process_read_line(line, output_path)
-
+    #THE SAME CONCEPT AS ABOVE NEEDS TO BE DEALTH WITH
     elif os.path.isdir(input_path): # If the input is a directory
         # Process all .vm files in the directory
         for filename in os.listdir(input_path):
