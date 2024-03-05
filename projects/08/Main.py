@@ -11,6 +11,7 @@ class VmTranslator:
         self.lt_count = 0
         self.count = 0
         self.ret_count = 0
+        self.inner_count = 0
         self.labels = {}
         self.kind = {
             "local": "LCL", "argument": "ARG", "this": "THIS", "that": "THAT",
@@ -68,11 +69,6 @@ class VmTranslator:
             f"({lt_label})", "@SP", "A=M", "M=-1",
             f"({end_lt_label})", "@SP", "M=M+1"
         ]
-
-    # checks whether the command type of Arithmetic or Push/Pop or otherwiseS
-
-    def command_type(self, command: str):
-        return self.commandType.get(command)
 
     # Writes to the output file the Assembly equivalent of code:
     # of pop and push commands
@@ -169,20 +165,21 @@ class VmTranslator:
         ]
 
     def assemble_function(self, function_name, num_args):
+        self.inner_count += 1
         return [
             "(" + self.labels.get(function_name) + ")",
             # stores the number of arguments in the stack of the frame
-            "@num_args", "D=A", "@SP", "A=M", "M=D",
+            "@" + str(num_args), "D=A", "@SP", "A=M", "M=D",
             # Setting the local pointer segment to that of the SP before commencing of the function
             "@SP", "D=M", "@LCL", "M=D",
             # Push num_args 0 values to initialise the callee
             # we create a small loop to do this
-            "(init_locals_loop)", "num_args", "D=A",
+            "(init_locals_loop_" + str(self.inner_count) + ")", "@" + num_args, "D=A",
             "@init_locals_end", "D;JEQ",
             "@SP", "A=M", "M=0", "@SP", "M=M+1",
             "@" + num_args, "M=M-1",
-            "@init_locals_loop", "0;JMP",
-            "(" + "init_locals_end" + ")"
+            "@init_locals_loop_" + str(self.inner_count), "0;JMP",
+            "(" + "init_locals_end_" + str(self.inner_count) + ")"
         ]
 
     def assemble_return(self):
@@ -251,7 +248,7 @@ class VmTranslator:
 def main():
     translate = VmTranslator()
     input_path = sys.argv[1]
-    output_path = input_path[:-3] + ".asm"
+    output_path = "FunctionCalls/SimpleFunction/SimpleFunction.asm"
     with open(input_path, "r") as working_file:
         for line in working_file:
             if line.startswith("label") or line.startswith("function"):
