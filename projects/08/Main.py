@@ -134,7 +134,7 @@ class VmTranslator:
             ]
 
     def assemble_if_goto(self, label_name):
-        return ["@" + self.labels.get(label_name), "D;JLT"]
+        return ["@SP", "M=M-1", "A=M", "D=M", "@" + self.labels.get(label_name), "D;JNE"]
 
     def assemble_goto(self, label_name):
         return ["@" + self.labels.get(label_name), "0;JMP"]
@@ -174,10 +174,11 @@ class VmTranslator:
             "@SP", "D=M", "@LCL", "M=D",
             # Push num_args 0 values to initialise the callee
             # we create a small loop to do this
-            "(init_locals_loop_" + str(self.inner_count) + ")", "@" + num_args, "D=A",
-            "@init_locals_end", "D;JEQ",
+            "@" + num_args, "D=A",
+            "(init_locals_loop_" + str(self.inner_count) + ")",
+            "@init_locals_end_" + str(self.inner_count), "D;JEQ",
             "@SP", "A=M", "M=0", "@SP", "M=M+1",
-            "@" + num_args, "M=M-1",
+            "D=D-1", "@SP", "A=M", "M=D",
             "@init_locals_loop_" + str(self.inner_count), "0;JMP",
             "(" + "init_locals_end_" + str(self.inner_count) + ")"
         ]
@@ -248,7 +249,7 @@ class VmTranslator:
 def main():
     translate = VmTranslator()
     input_path = sys.argv[1]
-    output_path = "FunctionCalls/SimpleFunction/SimpleFunction.asm"
+    output_path = "ProgramFlow/FibonacciSeries/FibonacciSeries.asm"
     with open(input_path, "r") as working_file:
         for line in working_file:
             if line.startswith("label") or line.startswith("function"):
