@@ -1,4 +1,3 @@
-import os
 import sys
 
 
@@ -148,20 +147,20 @@ class VmTranslator:
         self.ret_count += 1
         return [
             # Not to sure if return address has to be changed to something unique
-            "@return_address" + "_" + str(self.ret_count), "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1",
+            f'@{function_name}'+"$ret_" + str(self.ret_count), "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1",
             # Save LCL, ARG, THIS, THAT
             "@LCL", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
             "@ARG", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
             "@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
             "@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
             # Reposition ARG for the called function
-            "@SP", "D=M", f"@{num_args + str(5)}", "D=D-A", "@ARG", "M=D",
+            "@SP", "D=M", "@5", "D=D-A", f"@{num_args}", "D=D-A", "@ARG", "M=D",
             # Reposition LCL for the called function
             "@SP", "D=M", "@LCL", "M=D",
             # Jump to function
             f'@{function_name}', "0;JMP",
             # Define return address label
-            "(return_address_" + str(self.ret_count) + ")"
+            "(" + f'{function_name}' + "$ret_" + str(self.ret_count) + ")"
         ]
 
     def assemble_function(self, function_name, num_args):
@@ -224,7 +223,7 @@ class VmTranslator:
             self.process_write_line(line, self.assemble_goto(vm_line_part[1]), output_path)
         elif line.startswith("if-goto"):
             self.process_write_line(line, self.assemble_if_goto(vm_line_part[1]), output_path)
-        elif line.startswith("function"):
+        elif line.startswith("function") and vm_line_part[1] != "sys.init":
             self.process_write_line(line, self.assemble_function(vm_line_part[1], vm_line_part[2]), output_path)
         elif line.startswith("call"):
             self.process_write_line(line, self.assemble_call(vm_line_part[1], vm_line_part[2]), output_path)
@@ -249,15 +248,19 @@ class VmTranslator:
 def main():
     translate = VmTranslator()
     input_path = sys.argv[1]
-    output_path = "ProgramFlow/FibonacciSeries/FibonacciSeries.asm"
+    output_path = "FunctionCalls/StaticsTest/StaticsTest.asm"
     with open(input_path, "r") as working_file:
         for line in working_file:
-            if line.startswith("label") or line.startswith("function"):
+            line_parts = line.split()
+            if line_parts[0] == "label" or line_parts[0] == "function" and line_parts[1] != "Sys.init":
                 translate.count += 1
-                line_in_parts = line.split()
-                label_name = line_in_parts[1].upper() + "_" + str(translate.count)
-                translate.labels[line_in_parts[1]] = label_name
+                label_name = line_parts[1].upper() + "_" + str(translate.count)
+                translate.labels[line_parts[1]] = label_name
+            elif len(line_parts) > 1 and line_parts[1] == "Sys.init":
+                translate.labels[line_parts[1]] = line_parts[1].upper()
         working_file.seek(0)
+        # translate.process_write_line("SP = 256", ["@256", "D=A", "@SP", "M=D"], output_path)
+        translate.process_write_line("call sys.init", ["@SYS.INIT", "0;JMP"], output_path)
         for line in working_file:
             translate.process_read_line(line, output_path)
 
