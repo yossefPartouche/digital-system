@@ -12,6 +12,7 @@ class VmTranslator:
         self.ret_count = 0
         self.inner_count = 0
         self.labels = {}
+        self.fun_name = ""
         self.kind = {
             "local": "LCL", "argument": "ARG", "this": "THIS", "that": "THAT",
         }
@@ -133,82 +134,58 @@ class VmTranslator:
             ]
 
     def assemble_if_goto(self, label_name):
-        return ["@SP", "M=M-1", "A=M", "D=M", "@" + self.labels.get(label_name), "D;JNE"]
+        return ["@SP", "AM=M-1", "@" + self.fun_name + "$" + label_name, "D;JNE"]
 
     def assemble_goto(self, label_name):
-        return ["@" + self.labels.get(label_name), "0;JMP"]
+        return ["@" + self.fun_name + "$" + label_name, "0;JMP"]
 
     def assemble_label(self, label_name: str):
-        return ["(" + self.labels.get(label_name) + ")"]
+        return ["(" + self.fun_name + "$" + label_name + ")"]
 
     # potentially at to the parameter a return address
 
     def assemble_call(self, function_name, num_args):
         self.ret_count += 1
-        return [
-            # Not to sure if return address has to be changed to something unique
-            f'@{function_name}'+"$ret_" + str(self.ret_count), "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            # Save LCL, ARG, THIS, THAT
-            "@LCL", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            "@ARG", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            "@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            "@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            # Reposition ARG for the called function
-            "@SP", "D=M", "@5", "D=D-A", f"@{num_args}", "D=D-A", "@ARG", "M=D",
-            # Reposition LCL for the called function
-            "@SP", "D=M", "@LCL", "M=D",
-            # Jump to function
-            f'@{function_name}', "0;JMP",
-            # Define return address label
-            "(" + f'{function_name}' + "$ret_" + str(self.ret_count) + ")"
-        ]
+        ret_list = ["@" + self.fun_name + "$ret_" + str(self.ret_count), "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
 
-    def assemble_function(self, function_name, num_args):
-        self.inner_count += 1
-        return [
-            "(" + self.labels.get(function_name) + ")",
-            # stores the number of arguments in the stack of the frame
-            "@" + str(num_args), "D=A", "@SP", "A=M", "M=D",
-            # Setting the local pointer segment to that of the SP before commencing of the function
-            "@SP", "D=M", "@LCL", "M=D",
-            # Push num_args 0 values to initialise the callee
-            # we create a small loop to do this
-            "@" + num_args, "D=A",
-            "(init_locals_loop_" + str(self.inner_count) + ")",
-            "@init_locals_end_" + str(self.inner_count), "D;JEQ",
-            "@SP", "A=M", "M=0", "@SP", "M=M+1",
-            "D=D-1", "@SP", "A=M", "M=D",
-            "@init_locals_loop_" + str(self.inner_count), "0;JMP",
-            "(" + "init_locals_end_" + str(self.inner_count) + ")"
-        ]
+        # Save LCL, ARG, THIS, THAT
+        for i in ["LCL", "ARG", "THIS", "THAT"]:
+            ret_list = ret_list + ["@" + i, "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+        # we are preparing 5 'open slots' before reaching the function
+        ret_list = ret_list + ["@SP", "D=M", "@5", "D=D-A"]
+        # we prepare another Nargs spots for the arguments
+        # to be placed and then store the starting address in RAM[ARG]
+        ret_list = ret_list + ["@"+num_args, "D=D-A", "@ARG", "M=D"]
+        # saving our relative main SP in our LCL to know our return to reference
+        ret_list = ret_list + ["@SP", "D=M", "@LCL", "M=D",]
+
+        return ret_list + ["@" + function_name, "0;JMP", "(" + self.fun_name + "$ret_" + str(self.ret_count)]
+
+    def assemble_function(self, function_name, num_vars):
+        self.fun_name = function_name  # this is necessary if WITHIN (i.e. below) a particular function
+        # we have another label
+        ret_list = ["(" + self.fun_name + ")"]
+        for i in range(int(num_vars)):
+            ret_list = ret_list + self.assemble_push(["push", "constant", "0"])
+        return ret_list
 
     def assemble_return(self):
+        # our local is what stored are return to reference
         return [
             # RAM[LCL] => RAM[13]
-            "@LCL", "D=M", "@13", "M=D",
+            "@LCL", "D=M", "@R11", "M=D",
             # string return address
-            # RAM[13] => RAM[14]
-            "@13", "D=M", "@14", "M=D",
-            # RAM[14] = RAM[14] -5
-            "@5", "D=A", "@14", "M=M-D",
-            "A=M", "D=M", "@14", "M=D",
-            # RAM[SP] = RAM[SP] -1
-            "@SP", "M=M-1",
-            # RAM[RAM[SP]] = RAM[RAM[ARG]]
-            "A=M", "D=M",
-            # ^^^^ obtained RAM[RAM[SP]]
-            "@ARG", "A=M", "M=D",
-            # converting back RAM[SP] to caller frame
-            "@ARG", "M=M+1", "D=M", "@SP", "M=D",
-            # //duplicating the value at RAM[13] in RAM[15]
-            "@ 13", "D=M", "@15", "M=D",
+            "@5", "A=D-A", "D=M", "@R12",
+            "M=D", "@ARG", "D=M", "@0", "D=D+A",
+            "@R13", "M=D", "@SP", "AM=M-1", "D=M",
+            "@R13", "A=M", "M=D", "@ARG", "D=M", "@SP", "M=D+1",
             # Return LCL, ARG, THIS, THAT, to caller Frame
-            "@15", "M=M-1", "A=M", "D=M", "@THAT", "M=D",
-            "@15", "M=M-1", "A=M", "D=M", "@THIS", "M=D",
-            "@15", "M=M-1", "A=M", "D=M", "@ARG", "M=D",
-            "@15", "M=M-1", "A=M", "D=M", "@LCL", "M=D",
+            "@R11", "D=M-1", "AM=D", "D=M", "@THAT", "M=D",
+            "@R11", "D=M-1", "AM=D", "D=M", "@THIS", "M=D",
+            "@R11", "D=M-1", "AM=D", "D=M", "@ARG", "M=D",
+            "@R11", "D=M-1", "AM=D", "D=M", "@LCL", "M=D",
             # goto return address
-            "@13", "A=M", "0;JMP"
+            "@R12", "A=M", "0;JMP"
         ]
 
     def process_read_line(self, line, output_path):
@@ -250,18 +227,12 @@ def main():
     input_path = sys.argv[1]
     output_path = "FunctionCalls/StaticsTest/StaticsTest.asm"
     with open(input_path, "r") as working_file:
-        for line in working_file:
-            line_parts = line.split()
-            if line_parts[0] == "label" or line_parts[0] == "function" and line_parts[1] != "Sys.init":
-                translate.count += 1
-                label_name = line_parts[1].upper() + "_" + str(translate.count)
-                translate.labels[line_parts[1]] = label_name
-            elif len(line_parts) > 1 and line_parts[1] == "Sys.init":
-                translate.labels[line_parts[1]] = line_parts[1].upper()
         working_file.seek(0)
         # translate.process_write_line("SP = 256", ["@256", "D=A", "@SP", "M=D"], output_path)
         translate.process_write_line("call sys.init", ["@SYS.INIT", "0;JMP"], output_path)
         for line in working_file:
+            if line.startswith("label"):
+                pass  # do the sys.vm check and change translate.fun_name accordingly
             translate.process_read_line(line, output_path)
 
 
