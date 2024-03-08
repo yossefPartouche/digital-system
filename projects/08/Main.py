@@ -13,6 +13,7 @@ class VmTranslator:
         self.ret_count = 0
         self.inner_count = 0
         self.labels = {}
+        self.fun_name = ""
         self.kind = {
             "local": "LCL", "argument": "ARG", "this": "THIS", "that": "THAT",
         }
@@ -134,13 +135,13 @@ class VmTranslator:
             ]
 
     def assemble_if_goto(self, label_name):
-        return ["@SP", "M=M-1", "A=M", "D=M", "@" + self.labels.get(label_name), "D;JNE"]
+        return ["@SP", "AM=M-1", "@" + self.fun_name + "$" + label_name, "D;JNE"]
 
     def assemble_goto(self, label_name):
-        return ["@" + self.labels.get(label_name), "0;JMP"]
+        return ["@" + self.fun_name + "$" + label_name, "0;JMP"]
 
     def assemble_label(self, label_name: str):
-        return ["(" + self.labels.get(label_name) + ")"]
+        return ["(" + self.fun_name + "$" + label_name + ")"]
 
     # potentially at to the parameter a return address
 
@@ -165,23 +166,12 @@ class VmTranslator:
         ]
 
     def assemble_function(self, function_name, num_args):
-        self.inner_count += 1
-        return [
-            "(" + self.labels.get(function_name) + ")",
-            # stores the number of arguments in the stack of the frame
-            "@" + str(num_args), "D=A", "@SP", "A=M", "M=D",
-            # Setting the local pointer segment to that of the SP before commencing of the function
-            "@SP", "D=M", "@LCL", "M=D",
-            # Push num_args 0 values to initialise the callee
-            # we create a small loop to do this
-            "@" + num_args, "D=A",
-            "(init_locals_loop_" + str(self.inner_count) + ")",
-            "@init_locals_end_" + str(self.inner_count), "D;JEQ",
-            "@SP", "A=M", "M=0", "@SP", "M=M+1",
-            "D=D-1", "@SP", "A=M", "M=D",
-            "@init_locals_loop_" + str(self.inner_count), "0;JMP",
-            "(" + "init_locals_end_" + str(self.inner_count) + ")"
-        ]
+        self.fun_name = function_name  # this is necessary if WITHIN (i.e. below) a particular function
+        # we have another label
+        ret_list = ["(" + self.fun_name + ")"]
+        for i in range(int(num_args)):
+            ret_list = ret_list + self.assemble_push(["push", "constant", "0"])
+        return ret_list
 
     def assemble_return(self):
         return [
@@ -202,7 +192,7 @@ class VmTranslator:
             # converting back RAM[SP] to caller frame
             "@ARG", "M=M+1", "D=M", "@SP", "M=D",
             # //duplicating the value at RAM[13] in RAM[15]
-            "@ 13", "D=M", "@15", "M=D",
+            "@13", "D=M", "@15", "M=D",
             # Return LCL, ARG, THIS, THAT, to caller Frame
             "@15", "M=M-1", "A=M", "D=M", "@THAT", "M=D",
             "@15", "M=M-1", "A=M", "D=M", "@THIS", "M=D",
@@ -251,14 +241,10 @@ def main():
     input_path = sys.argv[1]
     output_path = "ProgramFlow/FibonacciSeries/FibonacciSeries.asm"
     with open(input_path, "r") as working_file:
-        for line in working_file:
-            if line.startswith("label") or line.startswith("function"):
-                translate.count += 1
-                line_in_parts = line.split()
-                label_name = line_in_parts[1].upper() + "_" + str(translate.count)
-                translate.labels[line_in_parts[1]] = label_name
         working_file.seek(0)
         for line in working_file:
+            if line.startswith("label"):
+                pass  # do the sys.vm check and change translate.fun_name accordingly
             translate.process_read_line(line, output_path)
 
 
