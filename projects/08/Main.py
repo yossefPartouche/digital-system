@@ -147,59 +147,47 @@ class VmTranslator:
 
     def assemble_call(self, function_name, num_args):
         self.ret_count += 1
-        return [
-            # Not to sure if return address has to be changed to something unique
-            "@return_address" + "_" + str(self.ret_count), "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            # Save LCL, ARG, THIS, THAT
-            "@LCL", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            "@ARG", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            "@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            "@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1",
-            # Reposition ARG for the called function
-            "@SP", "D=M", f"@{num_args + str(5)}", "D=D-A", "@ARG", "M=D",
-            # Reposition LCL for the called function
-            "@SP", "D=M", "@LCL", "M=D",
-            # Jump to function
-            f'@{function_name}', "0;JMP",
-            # Define return address label
-            "(return_address_" + str(self.ret_count) + ")"
-        ]
 
-    def assemble_function(self, function_name, num_args):
+        ret_list = ["@" + self.fun_name + "$ret_" + str(self.ret_count), "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+
+        # Save LCL, ARG, THIS, THAT
+        for i in ["LCL", "ARG", "THIS", "THAT"]:
+            ret_list = ret_list + ["@" + i, "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+        # we are preparing 5 'open slots' before reaching the function
+        ret_list = ret_list + ["@SP", "D=M", "@5", "D=D-A"]
+        # we prepare another Nargs spots for the arguments
+        # to be placed and then store the starting address in RAM[ARG]
+        ret_list = ret_list + ["@"+num_args, "D=D-A", "@ARG", "M=D"]
+        # saving our relative main SP in our LCL to know our return to reference
+        ret_list = ret_list + ["@SP", "D=M", "@LCL", "M=D",]
+
+        return ret_list + ["@" + function_name, "0;JMP", "(" + self.fun_name + "$ret_" + str(self.ret_count)]
+
+    def assemble_function(self, function_name, num_vars):
         self.fun_name = function_name  # this is necessary if WITHIN (i.e. below) a particular function
         # we have another label
         ret_list = ["(" + self.fun_name + ")"]
-        for i in range(int(num_args)):
+        for i in range(int(num_vars)):
             ret_list = ret_list + self.assemble_push(["push", "constant", "0"])
         return ret_list
 
     def assemble_return(self):
+        # our local is what stored are return to reference
         return [
             # RAM[LCL] => RAM[13]
-            "@LCL", "D=M", "@13", "M=D",
+            "@LCL", "D=M", "@R11", "M=D",
             # string return address
-            # RAM[13] => RAM[14]
-            "@13", "D=M", "@14", "M=D",
-            # RAM[14] = RAM[14] -5
-            "@5", "D=A", "@14", "M=M-D",
-            "A=M", "D=M", "@14", "M=D",
-            # RAM[SP] = RAM[SP] -1
-            "@SP", "M=M-1",
-            # RAM[RAM[SP]] = RAM[RAM[ARG]]
-            "A=M", "D=M",
-            # ^^^^ obtained RAM[RAM[SP]]
-            "@ARG", "A=M", "M=D",
-            # converting back RAM[SP] to caller frame
-            "@ARG", "M=M+1", "D=M", "@SP", "M=D",
-            # //duplicating the value at RAM[13] in RAM[15]
-            "@13", "D=M", "@15", "M=D",
+            "@5", "A=D-A", "D=M", "@R12",
+            "M=D", "@ARG", "D=M", "@0", "D=D+A",
+            "@R13", "M=D", "@SP", "AM=M-1", "D=M",
+            "@R13", "A=M", "M=D", "@ARG", "D=M", "@SP", "M=D+1",
             # Return LCL, ARG, THIS, THAT, to caller Frame
-            "@15", "M=M-1", "A=M", "D=M", "@THAT", "M=D",
-            "@15", "M=M-1", "A=M", "D=M", "@THIS", "M=D",
-            "@15", "M=M-1", "A=M", "D=M", "@ARG", "M=D",
-            "@15", "M=M-1", "A=M", "D=M", "@LCL", "M=D",
+            "@R11", "D=M-1", "AM=D", "D=M", "@THAT", "M=D",
+            "@R11", "D=M-1", "AM=D", "D=M", "@THIS", "M=D",
+            "@R11", "D=M-1", "AM=D", "D=M", "@ARG", "M=D",
+            "@R11", "D=M-1", "AM=D", "D=M", "@LCL", "M=D",
             # goto return address
-            "@13", "A=M", "0;JMP"
+            "@R12", "A=M", "0;JMP"
         ]
 
     def process_read_line(self, line, output_path):
