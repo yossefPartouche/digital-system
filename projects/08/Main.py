@@ -72,7 +72,7 @@ class VmTranslator:
 
     # Writes to the output file the Assembly equivalent of code:
     # of pop and push commands
-    def assemble_push(self, line_in_parts: []):
+    def assemble_push(self, line_in_parts):
         i = "@" + line_in_parts[2]
         if self.kind.get(line_in_parts[1]):
             return [
@@ -155,11 +155,11 @@ class VmTranslator:
         ret_list = ret_list + ["@SP", "D=M", "@5", "D=D-A"]
         # we prepare another Nargs spots for the arguments
         # to be placed and then store the starting address in RAM[ARG]
-        ret_list = ret_list + ["@"+num_args, "D=D-A", "@ARG", "M=D"]
+        ret_list = ret_list + ["@" + str(num_args), "D=D-A", "@ARG", "M=D"]
         # saving our relative main SP in our LCL to know our return to reference
-        ret_list = ret_list + ["@SP", "D=M", "@LCL", "M=D",]
+        ret_list = ret_list + ["@SP", "D=M", "@LCL", "M=D", ]
 
-        return ret_list + ["@" + function_name, "0;JMP", "(" + self.fun_name + "$ret_" + str(self.ret_count)]
+        return ret_list + ["@" + function_name, "0;JMP", "(" + self.fun_name + "$ret_" + str(self.ret_count) + ")"]
 
     def assemble_function(self, function_name, num_vars):
         self.fun_name = function_name  # this is necessary if WITHIN (i.e. below) a particular function
@@ -200,7 +200,7 @@ class VmTranslator:
             self.process_write_line(line, self.assemble_goto(vm_line_part[1]), output_path)
         elif line.startswith("if-goto"):
             self.process_write_line(line, self.assemble_if_goto(vm_line_part[1]), output_path)
-        elif line.startswith("function") and vm_line_part[1] != "sys.init":
+        elif line.startswith("function"):
             self.process_write_line(line, self.assemble_function(vm_line_part[1], vm_line_part[2]), output_path)
         elif line.startswith("call"):
             self.process_write_line(line, self.assemble_call(vm_line_part[1], vm_line_part[2]), output_path)
@@ -224,15 +224,17 @@ class VmTranslator:
 
 def main():
     translate = VmTranslator()
-    input_path = sys.argv[1]
-    output_path = "FunctionCalls/StaticsTest/StaticsTest.asm"
+    input_path = sys.argv[1]  # working_file.vm ou SysWorking.vm
+    output_path = "FunctionCalls/StaticsTest/StaticsTest.asm"  # we need to make this automated
+    # according to the chosen file provided
+    if input_path.startswith("Sys"):
+        with open(input_path, "r") as working_file:
+            translate.fun_name = "Sys.init"
+            translate.process_write_line("SP = 256", ["@256", "D=A", "@SP", "M=D"], output_path)
+            translate.process_write_line("Sys.init bootstrap",
+                                         translate.assemble_call("Sys.init", 0), output_path)
     with open(input_path, "r") as working_file:
-        working_file.seek(0)
-        # translate.process_write_line("SP = 256", ["@256", "D=A", "@SP", "M=D"], output_path)
-        translate.process_write_line("call sys.init", ["@SYS.INIT", "0;JMP"], output_path)
         for line in working_file:
-            if line.startswith("label"):
-                pass  # do the sys.vm check and change translate.fun_name accordingly
             translate.process_read_line(line, output_path)
 
 
