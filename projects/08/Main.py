@@ -3,7 +3,8 @@ import sys
 
 class VmTranslator:
     def __init__(self):
-        self.static = "@16"
+        self.rand_count = 0
+        self.static = 16
         self.temp = "@5"
         self.eq_count = 0
         self.gt_count = 0
@@ -13,6 +14,8 @@ class VmTranslator:
         self.inner_count = 0
         self.labels = {}
         self.fun_name = ""
+        self.static_base = {str: int}
+        self.current_class = ""
         self.kind = {
             "local": "LCL", "argument": "ARG", "this": "THIS", "that": "THAT",
         }
@@ -73,26 +76,27 @@ class VmTranslator:
     # Writes to the output file the Assembly equivalent of code:
     # of pop and push commands
     def assemble_push(self, line_in_parts):
-        i = "@" + line_in_parts[2]
+        i = line_in_parts[2]
         if self.kind.get(line_in_parts[1]):
             return [
-                i, "D=A", "@13", "M=D",
+                "@" + i, "D=A", "@13", "M=D",
                 "@" + self.kind.get(line_in_parts[1]),
                 "D=M", "@13", "D=D+M", "A=D", "D=M",
                 "@SP", "A=M", "M=D", "@SP", "M=M+1"
             ]
         elif line_in_parts[1] == "constant":
-            return [i, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
+            return ["@" + i, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "static":
-            return [
-                i, "D=A", self.static, "D=A+D",
-                "A=D", "D=M",
-                "@SP", "A=M", "M=D",
-                "@SP", "M=M+1"
-            ]
+            print("class name: " + self.current_class)
+            base = self.static + self.static_base.get(self.current_class)
+            print("base of " + self.current_class + ": " + str(base))
+            print("pushing out static Number: " + str(int(i) + base))
+            print()
+            return ["@" + str(int(i) + base), "D=M",
+                    "@SP", "A=M", "M=D", "@SP", "M=M+1"]
         elif line_in_parts[1] == "temp":
             return [
-                i, "D=A", self.temp, "D=A+D",
+                "@" + i, "D=A", self.temp, "D=A+D",
                 "A=D", "D=M",
                 "@SP", "A=M", "M=D",
                 "@SP", "M=M+1"
@@ -103,25 +107,29 @@ class VmTranslator:
             return ["@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1"]
 
     def assemble_pop(self, line_in_parts):
-        i = "@" + line_in_parts[2]
+        i = line_in_parts[2]
         if self.kind.get(line_in_parts[1]):
             return [
-                i, "D=A", "@13", "M=D",
+                "@" + i, "D=A", "@13", "M=D",
                 "@" + self.kind.get(line_in_parts[1]),
                 "D=M", "@13", "D=D+M", "M=D",
                 "@SP", "M=M-1", "A=M", "D=M", "@13", "A=M",
                 "M=D"
             ]
         elif line_in_parts[1] == "static":
-            return [
-                "@SP", "M=M-1", "A=M", "D=M", "@13", "M=D",
-                i, "D=A", self.static, "D=A+D", "@14", "M=D",
-                "@13", "D=M", "@14", "A=M", "M=D"
-            ]
+            # print("Assemble pop: " + str(self.rand_count + self.static))
+            print("class name: " + self.current_class)
+            base = self.static + self.static_base.get(self.current_class)
+            print("base of " + self.current_class + ": " + str(base))
+            print("popping in static Number: " + str(int(i) + base))
+            print()
+            to_ret = ["@SP", "AM=M-1", "D=M", "@" + str(int(i) + base), "M=D"]
+            self.rand_count += 1
+            return to_ret
         elif line_in_parts[1] == "temp":
             return [
                 "@SP", "M=M-1", "A=M", "D=M", "@13", "M=D",
-                i, "D=A", self.temp, "D=A+D", "@14", "M=D",
+                "@" + i, "D=A", self.temp, "D=A+D", "@14", "M=D",
                 "@13", "D=M", "@14", "A=M", "M=D"
             ]
         elif line_in_parts[1] == "pointer" and line_in_parts[2] == "0":
@@ -162,7 +170,13 @@ class VmTranslator:
         return ret_list + ["@" + function_name, "0;JMP", "(" + self.fun_name + "$ret_" + str(self.ret_count) + ")"]
 
     def assemble_function(self, function_name, num_vars):
+        # self.static = self.static + self.rand_count
+        # print("Assemble function " + str(self.static))
         self.fun_name = function_name  # this is necessary if WITHIN (i.e. below) a particular function
+        class_name = function_name.split(".")[0]
+        self.current_class = class_name
+        if not self.static_base.__contains__(class_name):
+            self.static_base[class_name] = self.rand_count
         # we have another label
         ret_list = ["(" + self.fun_name + ")"]
         for i in range(int(num_vars)):
