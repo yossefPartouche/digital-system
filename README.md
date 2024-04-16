@@ -1,6 +1,6 @@
 # digital-system
 
-This course gives a "buttom-up" view on how a computer is built from the hardware building blocks through to an OOP language that can run on the computer successfully.
+This course gives a "bottom-up" view on how a computer is built from the hardware building blocks through to an OOP language that can run on the computer successfully.
 This course was taught by Shimon Schocken one of the Co-Founders of Nand2Teteris.
 
 Topics Covered are:
